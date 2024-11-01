@@ -8,7 +8,7 @@
 int main()
 {
 	//hardcoded config
-	const char* host = "127.0.0.1";
+	//const char* host = "127.0.0.1";
     const int port = 8080;
     const int maxConnections = 100;
 
@@ -28,18 +28,41 @@ int main()
 
 	//bind determines where the server will be accessible for the client
 	bind(socket_fd, (struct sockaddr*)&serverAdrs, sizeof(serverAdrs));
-
 	std::cout << "Port : " << serverAdrs.sin_port << " and server: " << serverAdrs.sin_addr.s_addr << " binded." << std::endl;
 
-	listen(socket_fd, maxConnections);
 
+	listen(socket_fd, maxConnections);
 	std::cout << "Server listening on: " << serverAdrs.sin_family << std::endl;
 
-	int clientSocket = accept(socket_fd, nullptr, nullptr);
+	//loop to handle client messages
+	while(true)
+	{
+		int clientSocket = accept(socket_fd, nullptr, nullptr);
+		if (clientSocket < 0) {
+			std::cout << "accept failed\n";
+			break ;	//failed to connect, retry
+		}
+		std::cout << "client socket accecpted: " << clientSocket << std::endl;
+		while (true)
+		{
+			char buffer[1024] = {0};
+			ssize_t bytes = recv(clientSocket, buffer, sizeof(buffer), 0);
+			if (bytes < 0)
+				std::cout << "recv fail" << std::endl;
+			else if (bytes == 0) {
+				std::cout << "client disconnected\n";
+				close (socket_fd);
+				std::cout << "Server closing\n";
+				break ;
+			}
+			buffer[bytes] = '\0';
+			std::string backTo(buffer);
+			std::cout << "Message from client: " << backTo << std::endl;
+			std::string cmd = "var/app/com.google.Chrome " + backTo;
 
-	std::cout << "client socket accecpted: " << clientSocket << std::endl;
-
-	char buffer[1024] = {0};
-	recv(clientSocket, buffer, sizeof(buffer), 0);
-	std::cout << "Message from client: " << buffer << std::endl;
+			send(clientSocket, cmd.c_str(), cmd.size(), 0);
+		}
+		close (clientSocket);
+	}
+	return 0;
 }
